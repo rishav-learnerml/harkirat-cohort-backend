@@ -1,34 +1,65 @@
 const express = require("express");
 const app = express();
 
-app.get("/hospital-check", (req, res) => {
-  const userId = req.headers.username;
-  const pass = req.headers.password;
-  const numKidneys = parseInt(req.query.numKidneys);
-  //early returns
-  //auth check
-  if (!(userId === "rishav" && pass === "ris1234")) {
+//middleware functions
+
+const authChecker = (req, res, next) => {
+    const userId = req.headers.username;
+    const pass = req.headers.password;
+    if (!(userId === "rishav" && pass === "ris1234")) {
+        res.status(400).json({
+            message: "Authentication Failed! Please check your Username/Password!",
+        });
+    }
+    next();
+};
+
+const heartChecker = (req, res, next) => {
+  const heartHasHole = req.body.hasHole.toLowerCase() === "true" ? true : false;
+  if (heartHasHole) {
     res
       .status(400)
-      .json({
-        message: "Authentication Failed! Please check your Username/Password!",
-      });
-    return;
+      .json({ message: "Your heart has a hole! Get the surgery done asap!" });
   }
-  //kidney check
+  next();
+};
+
+const kidneyChecker = (req, res, next) => {
+  const numKidneys = parseInt(req.body.numKidneys);
   if (!(numKidneys === 1 || numKidneys === 2)) {
     res
       .status(400)
       .json({ message: "Invalid number of kidneys! You are not a human!" });
-    return;
   }
+  next();
+};
 
+//common middlewares
+app.use(express.json());
+app.use(authChecker);
+
+//routes
+app.get("/hospital-check", heartChecker, kidneyChecker, (req, res) => {
   //all set
-  res
-    .status(200)
-    .json({
-      message: "All tests done! You can now go to the doctor's chamber!",
-    });
+  res.status(200).json({
+    message: "All tests done! You can now go to the doctor's chamber!",
+  });
 });
 
-app.listen(3000,()=>{console.log('server running on port 3000')})
+app.get("/heart-check", heartChecker, (req, res) => {
+  //all set
+  res.status(200).json({
+    message: "Your heart is healthy!",
+  });
+});
+
+app.get("/kidney-check", kidneyChecker, (req, res) => {
+  //all set
+  res.status(200).json({
+    message: "Your kidney is healthy!",
+  });
+});
+
+app.listen(3000, () => {
+  console.log("server running on port 3000");
+});
