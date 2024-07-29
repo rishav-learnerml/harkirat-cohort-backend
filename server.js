@@ -1,17 +1,34 @@
 const express = require("express");
+const zod = require("zod");
 const app = express();
+
+//validation schema
+const kidneySchema = zod.array(zod.string());
+const authSchema = zod.object({
+  username: zod.literal("rishav"),
+  password: zod.literal("ris1234"),
+});
 
 //middleware functions
 
+const handleException = (err, req, res, next) => {
+  console.log("first", err);
+  res
+    .status(err.status)
+    .json({ message: "Oops! server crashed!", error: err.type });
+};
+
 const authChecker = (req, res, next) => {
-    const userId = req.headers.username;
-    const pass = req.headers.password;
-    if (!(userId === "rishav" && pass === "ris1234")) {
-        res.status(400).json({
-            message: "Authentication Failed! Please check your Username/Password!",
-        });
-    }
-    next();
+  const userId = req.headers.username;
+  const pass = req.headers.password;
+  const response = authSchema.safeParse({ userId, pass });
+  if (!response.success) {
+    res.status(400).json({
+      message: "Authentication Failed! Please check your Username/Password!",
+    });
+  }
+  console.log("succesfully logged in: ", response.data);
+  next();
 };
 
 const heartChecker = (req, res, next) => {
@@ -25,7 +42,12 @@ const heartChecker = (req, res, next) => {
 };
 
 const kidneyChecker = (req, res, next) => {
-  const numKidneys = parseInt(req.body.numKidneys);
+  const kidneys = req.body.kidneys;
+  const response = kidneySchema.safeParse(kidneys);
+  if (!response.success) {
+    res.status(411).json({ message: "Invalid inputs!" });
+  }
+  const numKidneys = response.data.length;
   if (!(numKidneys === 1 || numKidneys === 2)) {
     res
       .status(400)
@@ -59,6 +81,9 @@ app.get("/kidney-check", kidneyChecker, (req, res) => {
     message: "Your kidney is healthy!",
   });
 });
+
+//middleware - handles all exceptions
+app.use(handleException);
 
 app.listen(3000, () => {
   console.log("server running on port 3000");
